@@ -1,15 +1,13 @@
-package template
+package nfsn
 
 import (
-	"fmt"
-
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
-	libdnstemplate "github.com/libdns/template"
+	libdnsnfsn "github.com/libdns/nfsn"
 )
 
-// Provider lets Caddy read and manipulate DNS records hosted by this DNS provider.
-type Provider struct{ *libdnstemplate.Provider }
+// Provider lets Caddy read and manipulate DNS records hosted by nearlyfreespeech.net.
+type Provider struct{ *libdnsnfsn.Provider }
 
 func init() {
 	caddy.RegisterModule(Provider{})
@@ -18,42 +16,55 @@ func init() {
 // CaddyModule returns the Caddy module information.
 func (Provider) CaddyModule() caddy.ModuleInfo {
 	return caddy.ModuleInfo{
-		ID:  "dns.providers.template",
-		New: func() caddy.Module { return &Provider{new(libdnstemplate.Provider)} },
+		ID:  "dns.providers.nfsn",
+		New: func() caddy.Module { return &Provider{new(libdnsnfsn.Provider)} },
 	}
 }
 
-// TODO: This is just an example. Useful to allow env variable placeholders; update accordingly.
 // Provision sets up the module. Implements caddy.Provisioner.
 func (p *Provider) Provision(ctx caddy.Context) error {
-	p.Provider.APIToken = caddy.NewReplacer().ReplaceAll(p.Provider.APIToken, "")
-	return fmt.Errorf("TODO: not implemented")
+	replacer := caddy.NewReplacer()
+	p.Provider.Login = replacer.ReplaceAll(p.Provider.Login, "")
+	p.Provider.APIKey = replacer.ReplaceAll(p.Provider.APIKey, "")
+
+	return nil
 }
 
-// TODO: This is just an example. Update accordingly.
 // UnmarshalCaddyfile sets up the DNS provider from Caddyfile tokens. Syntax:
 //
-// providername [<api_token>] {
-//     api_token <api_token>
+// nfsn [<login>] [<api_key>] {
+//     login <login>
+//     api_key <api_key>
 // }
-//
-// **THIS IS JUST AN EXAMPLE AND NEEDS TO BE CUSTOMIZED.**
 func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	for d.Next() {
 		if d.NextArg() {
-			p.Provider.APIToken = d.Val()
+			p.Provider.Login = d.Val()
+		}
+		if d.NextArg() {
+			p.Provider.APIKey = d.Val()
 		}
 		if d.NextArg() {
 			return d.ArgErr()
 		}
 		for nesting := d.Nesting(); d.NextBlock(nesting); {
 			switch d.Val() {
-			case "api_token":
-				if p.Provider.APIToken != "" {
-					return d.Err("API token already set")
+			case "api_key":
+				if p.Provider.APIKey != "" {
+					return d.Err("API key already set")
 				}
 				if d.NextArg() {
-					p.Provider.APIToken = d.Val()
+					p.Provider.APIKey = d.Val()
+				}
+				if d.NextArg() {
+					return d.ArgErr()
+				}
+			case "login":
+				if p.Provider.Login != "" {
+					return d.Err("Login already set")
+				}
+				if d.NextArg() {
+					p.Provider.Login = d.Val()
 				}
 				if d.NextArg() {
 					return d.ArgErr()
@@ -63,8 +74,11 @@ func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 			}
 		}
 	}
-	if p.Provider.APIToken == "" {
-		return d.Err("missing API token")
+	if p.Provider.APIKey == "" {
+		return d.Err("missing API key")
+	}
+	if p.Provider.Login == "" {
+		return d.Err("missing Login")
 	}
 	return nil
 }
